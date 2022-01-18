@@ -142,3 +142,51 @@ Puis lancer lancer les trois containers à l'aide des commandes suivante :
 
 `docker run -d --name apache_rp -p 8080:80 api/apache_rp`
 
+Si dans un navigateur vous vous connecter à http://demo.api.ch:8080/ ,vous serez accueilli par la même page qu'à l'étape 1.
+
+### Dockerfile
+
+ ```
+ FROM php:7.2-apache
+
+ COPY conf/ /etc/apache2
+
+ RUN a2enmod proxy proxy_http
+ RUN a2ensite 000-* 001-*
+ ```
+ La troisième ligne active les modules apache "proxy" et "proxy_http" qui sont nécessaires pour utiliser apache comme reverse proxy.
+ La quatrième ligne active le site avec les deux fichiers de configiration 000-* et 001-*.
+
+### conf
+
+ Nous avons créée un dossier "conf/site-available" dans lequel nous avons ajouté deux fichiers de configuration : "000-default.conf" et "001-reverse-proxy.conf".
+
+ Dans le fichier "000-default.conf", nous avons écrit :
+ ```
+ <VirtualHost *:80>
+ </VirtualHost>
+ ```
+
+ Dans le fichier "001-reverse-proxy.conf", nous avons écrit :
+ ```
+ <VirtualHost *:80>
+         ServerName demo.api.ch
+
+         #ErrorLog ${APACHE_LOG_DIR}/error.log
+         #CustomLog ${APACHE_LOG_DIR}/access.log combined
+
+         ProxyPass "/api/students/" "http://172.17.0.3:3000/"
+         ProxyPassReverse "/api/students/" "http://172.17.0.3:3000/" 
+
+         ProxyPass "/" "http://172.17.0.2:80/"
+         ProxyPassReverse "/" "http://172.17.0.2:80/"
+
+ </VirtualHost>
+ ```
+ Ce fichier de configuration permet de rediriger les requêtes en fonction du chemin : '/' ou '/api/students/'.
+ ATTENTION :
+ Dans ce fichier noous avons noté les addresses ip en "dur". Pour retrouver les adresses correspondant aux containers, il faut effectuer ces commandes :
+
+ `docker inspect apache_static | grep -i ipaddr`
+
+ `docker inspect express_dynamic | grep -i ipaddr`
