@@ -6,18 +6,21 @@ Pour la première étape nous allons configuré un serveur statique apache. Nous
 
 Pour lancer le serveur il faut commencer par créer l'image docker. Il faut exécuter la commande suivant dans le dossier *docker-images/apache-php-image*.
 
-`docker build -t api/apache-php-image .`
+La branche git correspondante est *fb-apache-static*.
+
+`docker build -t api/apache_php .`
 
 Puis lancer l'application à l'aide de la commande suivante.
 
-`docker run -p 8080:80 api/apache-php-image`
+`docker run -p 8080:80 api/apache_php`
 
-si dans un navigateur vous vous connecter à `localhost:8080`, vous serez accueilli par cette page:
+Si dans un navigateur vous vous connecter à http://localhost:8080/ ,vous serez accueilli par cette page:
+
 ![serveur apache](images-rapport/accueil_site_static_apache.PNG "image serveur apache")
 
 ### Configuration
 
-dans le dossier docker-images/apache-php-image, il y a deux éléments
+Dans le dossier docker-images/apache-php-image, il y a deux éléments
 ![contenu dossier](images-rapport/contenu_dossier_apache-php-image.PNG)
 
 le dossier content contient tous les éléments pour l'affichage du serveur. Le modèle du serveur est disponible [içi](https://startbootstrap.com/theme/grayscale)
@@ -31,17 +34,19 @@ le fichier Dockerfile permet de générer une image docker. Son contenu est asse
 
 Nous allons ensuite lancer un serveur dynamique qui retournera du contenu JSON, celui-ci sera une liste d'adresse.
 
-Depuis le dossier courant *docker-images/express-image*, exécuter dans une console de commande
+La branche git correspondante est *fb-express-dynamic*.
 
-`docker build -t api/express-image .`
+Depuis le dossier courant *docker-images/express-image*, exécuter dans une console de commande :
+
+`docker build -t api/express .`
 
 Puis lancer l'application à l'aide de la commande suivante.
 
-`docker run -p 9000:3000 api/express-image`
+`docker run -p 9090:3000 api/express`
 
 Il est important de noter que ce container docker est de base à l'écoute sur le port 3000.
 
-En vous connectant à 'localhost:9000' vous verrez afficher une liste d'adresse, celle-ci est généré aléatoirement à chaque fois qu'on se connecte au serveur.
+En vous connectant à http://localhost:9090/ vous verrez afficher une liste d'adresse, celle-ci est généré aléatoirement à chaque fois qu'on se connecte au serveur.
 Voici un exemple d'affichage. La liste est au format json.
 ![serveur dynamique](images-rapport/liste_json.PNG)
 
@@ -61,7 +66,7 @@ app.listen(3000, function(){
 	console.log('Accepting HTTP requests on port 3000.');
 });
 ```
-L'application appelera la fonction generateAddresses si aucune autre information lui est donné dans l'url, par exemple si on tape `localhost:9000/test`
+L'application appelera la fonction generateAddresses si aucune autre information lui est donné dans l'url, par exemple si on tape `localhost:9090/test`
 ```
 app.get('/test', function(req, res){
 	res.send('Hello API - test is working');
@@ -117,8 +122,23 @@ La troisième copie le dossier src dans le dossier du container qui sert de serv
 La dernière ligne permet d'exécuter une commande à chaque démarage dans un conteneur, cette commande démarre le script index.js
 
 
-
 ## Step 3: Reverse proxy with apache (static configuration)
 
 Pour la troisième partie il faut au préalable avoir exécuté les parties 1 et 2. Cette partie consistera à créer un serveur qui redirigera sur le serveur apache statique ou le serveur node dynamique selon l'adress saisie.
 Le serveur qui est un containeur devra choisir sur lequel des deux autres containeurs précèdants rediriger.
+
+
+La branche git correspondante est *fb-apache-reverse-proxy*.
+
+Depuis le dossier courant *docker-images/apache-reverse-proxy*, exécuter dans une console de commande :
+
+`docker build -t api/apache_rp .`
+
+Puis lancer lancer les trois containers à l'aide des commandes suivante :
+
+`docker run -d --name apache_static api/apache_php`
+
+`docker run -d --name express_dynamic api/express`
+
+`docker run -d --name apache_rp -p 8080:80 api/apache_rp`
+
