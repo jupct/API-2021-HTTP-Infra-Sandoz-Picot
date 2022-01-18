@@ -134,7 +134,7 @@ Depuis le dossier courant *docker-images/apache-reverse-proxy*, exécuter dans u
 
 `docker build -t api/apache_rp .`
 
-Puis lancer lancer les trois containers à l'aide des commandes suivante :
+Puis lancer les trois containers à l'aide des commandes suivantes :
 
 `docker run -d --name apache_static api/apache_php`
 
@@ -190,3 +190,80 @@ Si dans un navigateur vous vous connecter à http://demo.api.ch:8080/ ,vous sere
  `docker inspect apache_static | grep -i ipaddr`
 
  `docker inspect express_dynamic | grep -i ipaddr`
+ 
+ 
+## Step 4: Requêtes AJAX avec JQuery
+
+Pour cette partie, nous allons implémenter des requêtes AJAEX avec JQuery dans notre site statique (partie 1) pour récupérer du contenu dynamique sur notre serveur express (partie2).
+
+La branche git correspondante est *fb-ajax-jquery*.
+
+Depuis le dossier courant *docker-images/apache-php-image*, exécuter dans une console de commande :
+
+`docker build -t api/apache_php .`
+ 
+Puis relancer les trois containers (comme la partie 3) à l'aide des commandes suivantes :
+
+ `docker run -d --name apache_static api/apache_php`
+
+ `docker run -d --name express_dynamic api/express`
+
+ `docker run -d --name apache_rp -p 8080:80 api/apache_rp`
+ 
+Si dans un navigateur vous vous connecter à http://demo.api.ch:8080/ ,vous serez accueilli par la même page qu'à l'étape 1, cependant sous le gros titre "HTTP INFRA", vous retrouverez une localisation qui s'actualisera toutes les trois secondes. 
+
+![serveur dynamique](images-rapport/accueil_dynamic_1.PNG)
+
+![serveur dynamique](images-rapport/accueil_dynamic_2.PNG)
+
+### index.html
+
+Nous avons mit à jour le fichier "index.html" que nous avons créée lors de la partie 1 pour notre site internet. 
+
+```
+		<!-- jQuery -->
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+			<!-- Custom script to load locations-->
+			<script src="js/locations.js"></script>
+```
+
+ATTTENTION :
+Nous avons modifier le nom de la class dans notre script pour pouvoir facilement le reporter dans le document "locations.js", decrit ci-dessous.
+
+```
+        <!-- Masthead-->
+        <header class="masthead">
+            <div class="container px-4 px-lg-5 d-flex h-100 align-items-center justify-content-center">
+                <div class="d-flex justify-content-center">
+                    <div class="text-center">
+                        <h1 class="mx-auto my-0 text-uppercase">HTTP Infra</h1>
+                        <h2 class="myClass">The objective is to build a complete web infrastructure.</h2>
+                        <a class="btn btn-primary" href="#about">Let's Go'</a>
+                    </div>
+                </div>
+            </div>
+        </header>
+```
+
+### locations.js
+Nous avons créée un fichier "locations.js" dans le dossier "content/js" dans lequel nous avons implémenter un script afin de récupérer du contenu dynamique sur notre sute.
+
+```
+$(function() {
+	console.log("Loading locations");
+
+	function loadLocations() {
+		$.getJSON( "/api/students/", function(locations) {
+			console.log(locations);
+			var message = "No location";
+			if (locations.length > 0) {
+				message = locations[0].address + " "+ locations[0].country;
+			}
+			$(".myClass").text(message);
+		});
+	};
+	
+	loadLocations();
+	setInterval(loadLocations, 5000);
+});
+```
