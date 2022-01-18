@@ -29,7 +29,7 @@ le fichier Dockerfile permet de générer une image docker. Son contenu est asse
 
 ## Step 2: Dynamic HTTP server with express.js
 
-Nous allons ensuite lancer un serveur dynamic qui retournera du contenu JSON, celui-ci sera une liste d'adresse.
+Nous allons ensuite lancer un serveur dynamique qui retournera du contenu JSON, celui-ci sera une liste d'adresse.
 
 Depuis le dossier courant *docker-images/express-image*, exécuter dans une console de commande
 
@@ -40,3 +40,85 @@ Puis lancer l'application à l'aide de la commande suivante.
 `docker run -p 9000:3000 api/express-image`
 
 Il est important de noter que ce container docker est de base à l'écoute sur le port 3000.
+
+En vous connectant à 'localhost:9000' vous verrez afficher une liste d'adresse, celle-ci est généré aléatoirement à chaque fois qu'on se connecte au serveur.
+Voici un exemple d'affichage. La liste est au format json.
+![serveur dynamique](images-rapport/liste_json.PNG)
+
+### index.js
+
+Le fichier utilise chance.js pour générer aléatoirement les informations des adresses. Et utilise express.js pour communiquer les informations.
+```
+var Chance = require('chance');
+var chance = new Chance();
+
+var express = require('express');
+var app = express();
+```
+L'application écoute sur le port 3000 au moyen de .listen
+```
+app.listen(3000, function(){
+	console.log('Accepting HTTP requests on port 3000.');
+});
+```
+L'application appelera la fonction generateAddresses si aucune autre information lui est donné dans l'url, par exemple si on tape `localhost:9000/test`
+```
+app.get('/test', function(req, res){
+	res.send('Hello API - test is working');
+});
+
+app.get('/', function(req, res){
+	res.send(generateLocations());
+});
+```
+La fonction appelé génére entre 3 et 15 adresse qu'elle met dans un tableau
+```
+function generateLocations(){
+
+    var numberOfLocations = chance.integer({
+        min: 0,
+        max: 20
+    });
+
+    console.log(numberOfLocations);
+
+    var locations = [];
+    for(var i = 0; i < numberOfLocations; i++){
+		var address = chance.address();
+		var country = chance.country();
+		var postcode = chance.postcode();
+
+        locations.push({
+            address: address,
+			country: country,
+            postcode: postcode,
+        });
+    };
+    console.log(locations);
+
+    return locations;
+}
+```
+
+### Dockerfile
+
+```
+FROM node:17.3.0
+
+RUN apt-get update && apt-get install -y vim
+
+COPY src /opt/app
+
+CMD ["node", "/opt/app/index.js"]
+```
+La première ligne indique la version de node.js a installé.
+La deuxième ligne installe vim pour
+La troisième copie le dossier src dans le dossier du container qui sert de serveur.
+La dernière ligne permet d'exécuter une commande à chaque démarage dans un conteneur, cette commande démarre le script index.js
+
+
+
+## Step 3: Reverse proxy with apache (static configuration)
+
+Pour la troisième partie il faut au préalable avoir exécuté les parties 1 et 2. Cette partie consistera à créer un serveur qui redirigera sur le serveur apache statique ou le serveur node dynamique selon l'adress saisie.
+Le serveur qui est un containeur devra choisir sur lequel des deux autres containeurs précèdants rediriger.
