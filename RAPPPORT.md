@@ -157,9 +157,9 @@ Si dans un navigateur vous vous connecter à http://demo.api.ch:8080/ ,vous sere
  La troisième ligne active les modules apache "proxy" et "proxy_http" qui sont nécessaires pour utiliser apache comme reverse proxy.
  La quatrième ligne active le site avec les deux fichiers de configiration 000-* et 001-*.
 
-### conf
+### conf/sites-available
 
- Nous avons créée un dossier "conf/site-available" dans lequel nous avons ajouté deux fichiers de configuration : "000-default.conf" et "001-reverse-proxy.conf".
+ Nous avons créée un dossier "conf/sites-available" dans lequel nous avons ajouté deux fichiers de configuration : "000-default.conf" et "001-reverse-proxy.conf".
 
  Dans le fichier "000-default.conf", nous avons écrit :
  ```
