@@ -194,7 +194,7 @@ Si dans un navigateur vous vous connecter à http://demo.api.ch:8080/ ,vous sere
  
 ## Step 4: Requêtes AJAX avec JQuery
 
-Pour cette partie, nous allons implémenter des requêtes AJAEX avec JQuery dans notre site statique (partie 1) pour récupérer du contenu dynamique sur notre serveur express (partie2).
+Pour cette partie, nous allons implémenter des requêtes AJAX avec JQuery dans notre site statique (partie 1) pour récupérer du contenu dynamique sur notre serveur express (partie2).
 
 La branche git correspondante est *fb-ajax-jquery*.
 
@@ -204,11 +204,11 @@ Depuis le dossier courant *docker-images/apache-php-image*, exécuter dans une c
  
 Puis relancer les trois containers (comme la partie 3) à l'aide des commandes suivantes :
 
- `docker run -d --name apache_static api/apache_php`
+`docker run -d --name apache_static api/apache_php`
 
- `docker run -d --name express_dynamic api/express`
+`docker run -d --name express_dynamic api/express`
 
- `docker run -d --name apache_rp -p 8080:80 api/apache_rp`
+`docker run -d --name apache_rp -p 8080:80 api/apache_rp`
  
 Si dans un navigateur vous vous connecter à http://demo.api.ch:8080/ ,vous serez accueilli par la même page qu'à l'étape 1, cependant sous le gros titre "HTTP INFRA", vous retrouverez une localisation qui s'actualisera toutes les trois secondes. 
 
@@ -266,4 +266,116 @@ $(function() {
 	loadLocations();
 	setInterval(loadLocations, 5000);
 });
+```
+
+
+## Step5: Configuration dynamique du reverse proxy
+
+Dans cette partie, nous avons remplacé la configuration statiques du reverse proxy (adresse IP codées en dur) par une configuration dynamique. Les variables d'envirronnement sont à placer en paramètres lors du lancement du container docker.
+
+La branche git correspondante est *fb-dynamic-config*.
+
+Depuis le dossier courant *docker-images/apache-reverse-proxy*, exécuter dans une console de commande :
+
+`docker build -t api/apach_rp .`
+
+Vous pouvez lancer plusieurs containers pour les images "api/apache_php" et "api/express". 
+Afin de connaitre les addresses ip des containers, utiliser les cmmandes : 
+
+`docker inspect apache_static | grep -i ipaddr`
+
+`docker inspect express_dynamic | grep -i ipaddr`
+
+Une fois les addresses connues, lancer le container de l'image "apache_rp" avec la commande : 
+
+`docker run -d -e STATIC_APP=[IPADDRESS]:80 -e DYNAMIC_APP=[IPADDRESS]:3000 --name apache_rp -p 8080:80 api/apache_rp`
+
+Si dans un navigateur vous vous connecter à http://demo.api.ch:8080/ ,vous serez accueilli par la même page qu'à l'étape 4.
+
+### Dockerfile
+
+```
+FROM php:7.2-apache
+
+RUN apt-get update && apt-get install -y vim
+
+COPY apache2-foreground /usr/local/bin/
+COPY templates /var/apache2/templates
+COPY conf/ /etc/apache2
+
+RUN a2enmod proxy proxy_http
+RUN a2ensite 000-* 001-*
+```
+Nous avons ajouté la ligne 3 dans le DockerFile.
+
+### apache2-foreground
+
+Nous avons créée un fichier d'exécution "apache2-foreground" au même endroit que le DockerFile avec ce contenu :
+```
+#####bin/bash
+set -e
+
+##### Add setup for API
+echo "Setup for API:"
+echo "Static: $STATIC_APP"
+echo "Dynamic: $DYNAMIC_APP"
+php /var/apache2/templates/config-template.php > /etc/apache2/sites-available/001-reverse-proxy.conf
+
+##### Note: we don't just use "apache2ctl" here because it itself is just a shell-script wrapper around apache2 which provides extra functionality like "apache2ctl start" for launching apache2 in the background.
+##### (also, when run as "apache2ctl <apache args>", it does not use "exec", which leaves an undesirable resident shell process)
+
+: "${APACHE_CONFDIR:=/etc/apache2}"
+: "${APACHE_ENVVARS:=$APACHE_CONFDIR/envvars}"
+if test -f "$APACHE_ENVVARS"; then
+	. "$APACHE_ENVVARS"
+fi
+
+##### Apache gets grumpy about PID files pre-existing
+: "${APACHE_RUN_DIR:=/var/run/apache2}"
+: "${APACHE_PID_FILE:=$APACHE_RUN_DIR/apache2.pid}"
+rm -f "$APACHE_PID_FILE"
+
+##### create missing directories
+##### (especially APACHE_RUN_DIR, APACHE_LOCK_DIR, and APACHE_LOG_DIR)
+for e in "${!APACHE_@}"; do
+	if [[ "$e" == *_DIR ]] && [[ "${!e}" == /* ]]; then
+		# handle "/var/lock" being a symlink to "/run/lock", but "/run/lock" not existing beforehand, so "/var/lock/something" fails to mkdir
+		#   mkdir: cannot create directory '/var/lock': File exists
+		dir="${!e}"
+		while [ "$dir" != "$(dirname "$dir")" ]; do
+			dir="$(dirname "$dir")"
+			if [ -d "$dir" ]; then
+				break
+			fi
+			absDir="$(readlink -f "$dir" 2>/dev/null || :)"
+			if [ -n "$absDir" ]; then
+				mkdir -p "$absDir"
+			fi
+		done
+
+		mkdir -p "${!e}"
+	fi
+done
+
+exec apache2 -DFOREGROUND "$@"
+```
+
+### config-template.php
+
+Nous avons créée un dossier "templates" dans lequel nous avons ajouté un fichier "confi-template.php" contenant le code suivant : 
+
+```
+<?php
+    $dynamic_app = getenv('DYNAMIC_APP');
+	$static_app = getenv('STATIC_APP');
+?>
+<VirtualHost *:80>
+        ServerName demo.api.ch
+
+        ProxyPass '/api/students/' 'http://<?php print "$dynamic_app"?>/'
+        ProxyPassReverse '/api/students/' 'http://<?php print "$dynamic_app"?>/'
+
+        ProxyPass '/' 'http://<?php print "$static_app"?>/'
+        ProxyPassReverse '/' 'http://<?php print "$static_app"?>/'
+</VirtualHost>
 ```
