@@ -379,3 +379,11 @@ Nous avons créée un dossier "templates" dans lequel nous avons ajouté un fich
         ProxyPassReverse '/' 'http://<?php print "$static_app"?>/'
 </VirtualHost>
 ```
+
+## Additonal steps
+
+### Load balancing : multiple server nodes and round-robin vs sticky sessions
+
+La branche git correspondante est *extrastep*.
+
+ATTENTION : Le fichier apache2-foreground doit avoir des fin de ligne LF et non CRLF.
