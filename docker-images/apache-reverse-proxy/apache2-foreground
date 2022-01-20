@@ -4,6 +4,7 @@ set -e
 # Add setup for API
 echo "Setup for API:"
 echo "Static: $STATIC_APP"
+echo "Static_Premium: $STATIC_APP_PREMIUM"
 echo "Dynamic: $DYNAMIC_APP"
 php /var/apache2/templates/config-template.php > /etc/apache2/sites-available/001-reverse-proxy.conf
 
